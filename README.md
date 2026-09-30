@@ -6,7 +6,7 @@ A native macOS companion that makes the camera notch a little more useful. Halo 
 
 ## Download and install
 
-[Download the Halo beta DMG](https://github.com/Mustafa-khann/Halo/releases/download/v1.2.2-beta.1/Halo-1.2.2.dmg) · [Release notes and checksum](https://github.com/Mustafa-khann/Halo/releases/tag/v1.2.2-beta.1)
+[Download the Halo beta DMG](https://github.com/Mustafa-khann/Halo/releases/download/v1.2.3-beta.1/Halo-1.2.3.dmg) · [Release notes and checksum](https://github.com/Mustafa-khann/Halo/releases/tag/v1.2.3-beta.1)
 
 1. Open the downloaded DMG and drag **Halo** into **Applications**.
 2. Launch **Halo** from Applications. It appears in the menu bar and around the camera notch.
@@ -19,7 +19,7 @@ Halo supports **macOS 14 or later**, with one universal app for **Apple silicon 
 To verify the download, place the DMG and its `.sha256` file in the same folder and run:
 
 ```sh
-shasum -a 256 -c Halo-1.2.2.dmg.sha256
+shasum -a 256 -c Halo-1.2.3.dmg.sha256
 ```
 
 ## Features
@@ -31,7 +31,7 @@ shasum -a 256 -c Halo-1.2.2.dmg.sha256
 - A local file shelf: drop files onto Halo, drag individual files into other apps, select several files for AirDrop or copying, open them, or reveal them in Finder. File references survive relaunch, with duplicate detection and a 20-file limit. Removing an item never deletes the original.
 - Keep awake for 15 minutes, 30 minutes, an hour, two hours, or until stopped. Optionally keep the display awake too. Timed sessions use macOS-managed timeouts, and all sessions end on quit or system sleep. Manual sleep and lid-close sleep still work normally.
 - A nonactivating panel, configurable Control–Option–H shortcut, Escape dismissal, pinning, and delayed hover expansion.
-- A frosted glass interface that blurs the actual app windows or wallpaper behind Halo, with SF typography, softly rounded cards, larger music artwork, a focus progress ring, and consistent controls. The camera area stays black; Reduce Transparency and increased contrast use an opaque background. Tabs switch on hover across their full padded area, with a gently moving selection highlight. Battery details live in the Battery tab.
+- A frosted glass interface that blurs the actual app windows or wallpaper behind Halo, with SF typography, aligned spacing, subtle glass edges, softly rounded cards, larger music artwork, a focus progress ring, and consistent hover and press feedback. The camera area stays black; Reduce Transparency and increased contrast use an opaque background. Tabs switch on hover across their full padded area, with a gently moving selection highlight. Battery details live in the Battery tab.
 - Native settings, system appearance, Reduce Motion support, launch at login, and a floating fallback for displays without a notch.
 
 Halo requires macOS Sonoma 14 or later. The release bundle includes Apple silicon and Intel binaries. It lives in the menu bar rather than the Dock.
@@ -63,7 +63,7 @@ scripts/package-dmg.sh
 
 The installer script uses Python 3.11 or later and installs its pinned packaging dependencies in `.build/dmg-tools`. Set `HALO_PYTHON` if your Python executable has another name. These dependencies generate the Finder layout and are not shipped or needed by Halo itself.
 
-Outputs are `dist/Halo.app`, `dist/Halo-1.2.2.dmg`, and a SHA-256 checksum. The disk image has a drag-to-Applications layout and custom artwork.
+Outputs are `dist/Halo.app`, `dist/Halo-1.2.3.dmg`, and a SHA-256 checksum. The disk image has a drag-to-Applications layout and custom artwork.
 
 ## Signing a notarized release
 

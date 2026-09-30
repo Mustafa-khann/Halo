@@ -57,7 +57,7 @@ struct HaloShape: Shape {
             .clipShape(HaloShape(topRadius: model.expanded ? HaloLayout.topRadius : 5, bottomRadius: model.expanded ? HaloLayout.bottomRadius : 12))
             .overlay {
                 if model.expanded {
-                    HaloShape(topRadius: HaloLayout.topRadius, bottomRadius: HaloLayout.bottomRadius).strokeBorderFallback(Color.white.opacity(contrast == .increased ? 0.4 : 0.14))
+                    HaloGlassEdge(notchHeight: model.geometry.notchHeight)
                 }
                 if model.preferences.filesEnabled && model.fileShelf.draggingOver {
                     HaloShape(topRadius: HaloLayout.topRadius, bottomRadius: HaloLayout.bottomRadius).stroke(HaloPalette.accent, lineWidth: 2)
@@ -105,7 +105,7 @@ struct HaloShape: Shape {
                         headerButton("xmark", label: "Close Halo") { model.close() }
                     }
                 } else if model.compactActivity { compactTrailing }
-            }.frame(width: wing)
+            }.padding(.trailing, model.expanded ? HaloLayout.topRadius : 0).frame(width: wing)
         }
     }
     private func headerButton(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
@@ -113,7 +113,7 @@ struct HaloShape: Shape {
             Image(systemName: symbol).font(.system(size: 10, weight: .medium))
                 .contentShape(Rectangle())
         }
-            .buttonStyle(HaloIconButtonStyle(size: 28)).help(label).accessibilityLabel(label)
+            .buttonStyle(HaloIconButtonStyle(size: 26)).help(label).accessibilityLabel(label)
     }
     @ViewBuilder private var compactLeading: some View {
         if model.chargingToast {
@@ -148,24 +148,24 @@ struct HaloShape: Shape {
                             Image(systemName: tab.symbol).font(.system(size: 12, weight: .medium))
                             Text(tab.title).font(.system(size: 10, weight: .medium))
                         }.frame(maxWidth: .infinity).frame(height: 36)
-                            .foregroundStyle(model.selectedTab == tab ? .white : HaloPalette.secondary)
+                            .foregroundStyle(model.selectedTab == tab ? .white : .white.opacity(contrast == .increased ? 0.74 : 0.62))
                             .background {
                                 if model.selectedTab == tab {
                                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                        .fill(.white.opacity(0.10))
-                                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(0.08), lineWidth: 0.5))
+                                        .fill(LinearGradient(colors: [.white.opacity(0.12), .white.opacity(0.065)], startPoint: .top, endPoint: .bottom))
+                                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(.white.opacity(contrast == .increased ? 0.32 : 0.10), lineWidth: 0.5))
                                         .matchedGeometryEffect(id: "selectedTab", in: navigation)
                                 }
                             }
                             .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(HaloTileButtonStyle(radius: 12))
                     .onHover { hovering in if hovering { model.selectedTab = tab } }
                     .accessibilityLabel(tab.title).accessibilityAddTraits(model.selectedTab == tab ? [.isSelected] : [])
                 }
             }.padding(3).frame(height: 42)
-                .background(.white.opacity(0.035), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
-                .padding(.horizontal, 24).padding(.top, 6).padding(.bottom, 10)
+                .background(.white.opacity(0.025), in: RoundedRectangle(cornerRadius: 15, style: .continuous))
+                .padding(.horizontal, HaloLayout.contentInset).padding(.top, 6).padding(.bottom, 10)
                 .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: model.selectedTab)
             Group {
                 switch model.selectedTab {
@@ -176,19 +176,17 @@ struct HaloShape: Shape {
                 case .awake: KeepAwakeView(service: model.keepAwake)
                 case .power: PowerView(model: model)
                 }
-            }.padding(.horizontal, 28).frame(maxWidth: .infinity).frame(height: HaloLayout.contentHeight)
+            }.padding(.horizontal, HaloLayout.contentInset).frame(maxWidth: .infinity).frame(height: HaloLayout.contentHeight)
             HStack {
                 Label(model.pinned ? "Pinned" : "Hover to open", systemImage: model.pinned ? "pin.fill" : "cursorarrow")
                 Spacer()
-                Text(model.preferences.shortcut.glyphs).fontDesign(.monospaced)
+                Text(model.preferences.shortcut.glyphs).font(.system(size: 9, design: .monospaced))
+                    .padding(.horizontal, 6).padding(.vertical, 1)
+                    .background(.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
             }.font(.system(size: 10)).foregroundStyle(contrast == .increased ? HaloPalette.secondary : HaloPalette.tertiary).frame(height: 14)
-                .padding(.horizontal, 30).padding(.top, 8).padding(.bottom, 6)
+                .padding(.horizontal, HaloLayout.contentInset).padding(.top, 8).padding(.bottom, 6)
         }
     }
-}
-
-private extension Shape {
-    func strokeBorderFallback(_ color: Color) -> some View { stroke(color, lineWidth: 0.65) }
 }
 
 struct ArtworkView: View {
@@ -200,7 +198,8 @@ struct ArtworkView: View {
                 LinearGradient(colors: [Color(red: 0.24, green: 0.32, blue: 0.55), Color(red: 0.12, green: 0.13, blue: 0.23)], startPoint: .topLeading, endPoint: .bottomTrailing)
                 Image(systemName: "music.note").font(.system(size: size * 0.4, weight: .medium)).foregroundStyle(.white.opacity(0.7))
             }
-        }.frame(width: size, height: size).clipShape(RoundedRectangle(cornerRadius: size * 0.22))
+        }.frame(width: size, height: size).clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous).strokeBorder(.white.opacity(0.12), lineWidth: 0.5).allowsHitTesting(false))
     }
 }
 
@@ -334,9 +333,9 @@ struct ArtworkView: View {
     @ViewState private var seeking = false
     var body: some View {
         if model.media.available {
-            VStack(spacing: 8) {
+            VStack(spacing: 10) {
                 HStack(spacing: 13) {
-                    ArtworkView(url: model.media.artworkURL, size: 62)
+                    ArtworkView(url: model.media.artworkURL, size: 64)
                         .shadow(color: .black.opacity(0.3), radius: 6, y: 3)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(model.media.title).font(.system(size: 15, weight: .semibold)).lineLimit(1).help(model.media.title)

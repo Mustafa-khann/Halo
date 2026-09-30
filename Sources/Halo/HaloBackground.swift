@@ -12,22 +12,17 @@ struct HaloBackground: View {
             ZStack {
                 if showsMaterial && !reduceTransparency && contrast != .increased {
                     HaloFrostedMaterial()
+                    // A neutral wash keeps controls legible without adding a fixed hue.
+                    Color.black.opacity(0.10)
                 } else {
-                    Color(red: 0.075, green: 0.085, blue: 0.115)
-                }
-
-                LinearGradient(colors: [Color.black.opacity(0.48), Color(red: 0.025, green: 0.035, blue: 0.065).opacity(0.52)], startPoint: .top, endPoint: .bottom)
-
-                if contrast != .increased {
-                    ambientGradient(in: geometry.size)
-                        .opacity(reduceTransparency ? 0.42 : 0.78)
+                    HaloPalette.surface
                 }
 
                 // Keep the physical camera area seamless while the glass opens below it.
                 LinearGradient(stops: [
                     .init(color: .black, location: 0),
                     .init(color: .black, location: min(1, notchHeight / max(1, geometry.size.height))),
-                    .init(color: .clear, location: min(1, (notchHeight + 72) / max(1, geometry.size.height))),
+                    .init(color: .clear, location: min(1, (notchHeight + 36) / max(1, geometry.size.height))),
                     .init(color: .clear, location: 1)
                 ], startPoint: .top, endPoint: .bottom)
             }
@@ -35,31 +30,13 @@ struct HaloBackground: View {
         .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
-
-    private func ambientGradient(in size: CGSize) -> some View {
-        ZStack {
-            Ellipse()
-                .fill(Color(red: 0.48, green: 0.36, blue: 0.79).opacity(0.54))
-                .frame(width: size.width * 0.95, height: size.height * 0.85)
-                .position(x: size.width * 0.12, y: size.height * 0.60)
-            Ellipse()
-                .fill(Color(red: 0.20, green: 0.46, blue: 0.82).opacity(0.45))
-                .frame(width: size.width * 0.82, height: size.height * 0.80)
-                .position(x: size.width * 0.85, y: size.height * 0.46)
-            Ellipse()
-                .fill(Color(red: 0.12, green: 0.60, blue: 0.57).opacity(0.40))
-                .frame(width: size.width * 0.75, height: size.height * 0.55)
-                .position(x: size.width * 0.64, y: size.height * 1.02)
-        }
-        .compositingGroup()
-        .blur(radius: 48)
-    }
 }
 
 private struct HaloFrostedMaterial: NSViewRepresentable {
     func makeNSView(context: Context) -> HaloEffectView {
         let view = HaloEffectView()
-        view.material = .hudWindow
+        view.material = .underWindowBackground
+        // Let macOS blur the live windows or wallpaper underneath this panel.
         view.blendingMode = .behindWindow
         view.state = .active
         view.appearance = NSAppearance(named: .darkAqua)

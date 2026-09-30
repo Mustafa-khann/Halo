@@ -7,7 +7,7 @@ enum HaloTab: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .overview: return "Home"
-        case .music: return "Music"
+        case .music: return "Media"
         case .timer: return "Timer"
         case .files: return "Files"
         case .awake: return "Awake"
@@ -31,7 +31,7 @@ enum MusicProvider: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .automatic: return "Automatic"
+        case .automatic: return "System Now Playing"
         case .spotify: return "Spotify"
         case .appleMusic: return "Apple Music"
         }
@@ -154,15 +154,26 @@ struct MediaSnapshot: Equatable {
     var artist = ""
     var album = ""
     var artworkURL: URL?
+    var artworkData: Data?
+    var sourceBundleID = ""
+    var sourceName = ""
+    var processID: Int32 = 0
+    var playbackRate = 1.0
+    var skipBackward = false
+    var skipForward = false
+    var prohibitsSkip = false
     var playing = false
     var available = false
     var duration: Double = 0
     var position: Double = 0
-    var provider: MusicProvider = .spotify
-    var message = "Connect Spotify or Apple Music to bring your music here."
+    var provider: MusicProvider = .automatic
+    var message = "Play music, a podcast, or a video. What appears in Control Center appears here."
     var observedAt = Date()
+    var playerName: String { sourceName.isEmpty ? provider.title : sourceName }
+    var canSeek: Bool { available && duration.isFinite && duration > 0 && !trackID.isEmpty }
     func elapsed(at date: Date = Date()) -> Double {
-        min(max(0, position + (playing ? date.timeIntervalSince(observedAt) : 0)), max(0, duration))
+        let value = max(0, position + (playing ? max(0, date.timeIntervalSince(observedAt)) * playbackRate : 0))
+        return duration > 0 ? min(value, duration) : value
     }
 }
 
@@ -232,6 +243,6 @@ struct DisplayGeometry: Equatable {
 }
 
 func clockString(_ seconds: TimeInterval) -> String {
-    let value = max(0, Int(ceil(seconds)))
+    let value = seconds.isFinite ? Int(min(Double(Int.max / 2), max(0, ceil(seconds)))) : 0
     return String(format: "%02d:%02d", value / 60, value % 60)
 }

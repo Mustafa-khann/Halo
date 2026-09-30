@@ -123,7 +123,7 @@ struct HaloShape: Shape {
         } else if model.keepAwake.session.active {
             Image(systemName: "cup.and.saucer.fill").foregroundStyle(HaloPalette.accent).font(.system(size: 14))
         } else {
-            ArtworkView(url: model.media.artworkURL, size: 21)
+            ArtworkView(url: model.media.artworkURL, data: model.media.artworkData, size: 21)
         }
     }
     @ViewBuilder private var compactTrailing: some View {
@@ -191,15 +191,23 @@ struct HaloShape: Shape {
 
 struct ArtworkView: View {
     var url: URL?
+    var data: Data? = nil
     var size: CGFloat
     var body: some View {
+        Group {
+            if let data, let image = NSImage(data: data) {
+                Image(nsImage: image).resizable().scaledToFill()
+            } else { remoteArtwork }
+        }.frame(width: size, height: size).clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous).strokeBorder(.white.opacity(0.12), lineWidth: 0.5).allowsHitTesting(false))
+    }
+    private var remoteArtwork: some View {
         AsyncImage(url: url) { image in image.resizable().scaledToFill() } placeholder: {
             ZStack {
                 LinearGradient(colors: [Color(red: 0.24, green: 0.32, blue: 0.55), Color(red: 0.12, green: 0.13, blue: 0.23)], startPoint: .topLeading, endPoint: .bottomTrailing)
                 Image(systemName: "music.note").font(.system(size: size * 0.4, weight: .medium)).foregroundStyle(.white.opacity(0.7))
             }
-        }.frame(width: size, height: size).clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous).strokeBorder(.white.opacity(0.12), lineWidth: 0.5).allowsHitTesting(false))
+        }
     }
 }
 
@@ -239,15 +247,15 @@ struct ArtworkView: View {
             if model.preferences.musicEnabled {
                 Button { model.selectedTab = .music } label: {
                     HStack(spacing: 10) {
-                        ArtworkView(url: model.media.artworkURL, size: 32)
+                        ArtworkView(url: model.media.artworkURL, data: model.media.artworkData, size: 32)
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(model.media.available ? model.media.title : "Your music, right here").font(.system(size: 12, weight: .medium)).lineLimit(1)
-                            Text(model.media.available ? model.media.artist : "Spotify & Apple Music").font(.system(size: 11)).foregroundStyle(HaloPalette.secondary).lineLimit(1)
+                            Text(model.media.available ? model.media.title : "Now playing, right here").font(.system(size: 12, weight: .medium)).lineLimit(1)
+                            Text(model.media.available ? model.media.artist : "Music, podcasts, and video").font(.system(size: 11)).foregroundStyle(HaloPalette.secondary).lineLimit(1)
                         }
                         Spacer(minLength: 4)
                         Image(systemName: model.media.playing ? "waveform" : "chevron.right").font(.system(size: 11, weight: .medium)).foregroundStyle(HaloPalette.secondary)
                     }.padding(.horizontal, 10).frame(height: 48).haloCard(radius: 14).contentShape(Rectangle())
-                }.buttonStyle(HaloTileButtonStyle(radius: 14)).accessibilityLabel("Open Music")
+                }.buttonStyle(HaloTileButtonStyle(radius: 14)).accessibilityLabel("Open Media")
             } else {
                 Button { model.showSettings?() } label: {
                     Label("Customize your Halo", systemImage: "slider.horizontal.3")
@@ -335,42 +343,50 @@ struct ArtworkView: View {
         if model.media.available {
             VStack(spacing: 10) {
                 HStack(spacing: 13) {
-                    ArtworkView(url: model.media.artworkURL, size: 64)
+                    ArtworkView(url: model.media.artworkURL, data: model.media.artworkData, size: 64)
                         .shadow(color: .black.opacity(0.3), radius: 6, y: 3)
                     VStack(alignment: .leading, spacing: 4) {
                         Text(model.media.title).font(.system(size: 15, weight: .semibold)).lineLimit(1).help(model.media.title)
                         Text(model.media.artist).font(.system(size: 12)).foregroundStyle(HaloPalette.secondary).lineLimit(1)
-                        Text(model.mediaControlError ?? model.media.provider.title)
+                        Text(model.mediaControlError ?? model.media.playerName)
                             .font(.system(size: 11)).foregroundStyle(model.mediaControlError == nil ? HaloPalette.tertiary : HaloPalette.orange)
-                            .lineLimit(1).help(model.mediaControlError ?? model.media.provider.title)
+                            .lineLimit(1).help(model.mediaControlError ?? model.media.playerName)
                     }
                     Spacer(minLength: 0)
                 }
                 TimelineView(.periodic(from: .now, by: 1)) { context in
-                    let position = min(seekPreview ?? model.media.elapsed(at: context.date), max(0, model.media.duration))
+                    let position = seekPreview ?? model.media.elapsed(at: context.date)
                     HStack(spacing: 9) {
-                        Text(clockString(position)).frame(width: 36, alignment: .leading)
-                        Slider(value: Binding(get: { position }, set: { value in
-                            seekPreview = value
-                            // Keyboard and accessibility changes commit without a drag session.
-                            if !seeking { model.mediaService.seek(to: value, in: model.media) }
-                        }), in: 0...max(1, model.media.duration), onEditingChanged: { editing in
-                            seeking = editing
-                            if editing { seekPreview = position }
-                            else if let seekPreview { model.mediaService.seek(to: seekPreview, in: model.media) }
-                        })
-                        .labelsHidden().controlSize(.small).tint(.white.opacity(0.85))
-                        .disabled(model.media.duration <= 0 || model.media.trackID.isEmpty)
-                        .accessibilityLabel("Playback position")
-                        .accessibilityValue("\(clockString(position)) of \(clockString(model.media.duration))")
-                        .help("Drag to seek")
-                        Text("−" + clockString(max(0, model.media.duration - position))).frame(width: 42, alignment: .trailing)
+                        if model.media.canSeek {
+                            Text(clockString(position)).frame(minWidth: 36, alignment: .leading)
+                            Slider(value: Binding(get: { position }, set: { value in
+                                seekPreview = value
+                                // Keyboard and accessibility changes commit without a drag session.
+                                if !seeking { model.mediaService.seek(to: value, in: model.media) }
+                            }), in: 0...max(1, model.media.duration), onEditingChanged: { editing in
+                                seeking = editing
+                                if editing { seekPreview = position }
+                                else if let seekPreview { model.mediaService.seek(to: seekPreview, in: model.media) }
+                            })
+                            .labelsHidden().controlSize(.small).tint(.white.opacity(0.85))
+                            .disabled(!model.media.canSeek)
+                            .accessibilityLabel("Playback position")
+                            .accessibilityValue("\(clockString(position)) of \(clockString(model.media.duration))")
+                            .help("Drag to seek")
+                            Text("−" + clockString(max(0, model.media.duration - position))).frame(minWidth: 42, alignment: .trailing)
+                        } else {
+                            Text("Now Playing").foregroundStyle(HaloPalette.tertiary)
+                            Spacer()
+                            Text(clockString(position))
+                        }
                     }.font(.system(size: 10, design: .monospaced)).foregroundStyle(HaloPalette.secondary)
                 }
                 HStack(spacing: 24) {
-                    musicButton("backward.end.fill", "Previous track") { model.mediaService.command(.previous) }
+                    musicButton(model.media.skipBackward ? "gobackward.15" : "backward.end.fill", model.media.skipBackward ? "Back 15 seconds" : "Previous track") { model.mediaService.command(.previous) }
+                        .disabled(model.media.prohibitsSkip && !model.media.skipBackward)
                     musicButton(model.media.playing ? "pause.fill" : "play.fill", model.media.playing ? "Pause" : "Play", large: true) { model.mediaService.command(.playpause) }
-                    musicButton("forward.end.fill", "Next track") { model.mediaService.command(.next) }
+                    musicButton(model.media.skipForward ? "goforward.15" : "forward.end.fill", model.media.skipForward ? "Forward 15 seconds" : "Next track") { model.mediaService.command(.next) }
+                        .disabled(model.media.prohibitsSkip && !model.media.skipForward)
                 }
                 SystemVolumeView(model: model).padding(.top, 2)
             }
@@ -380,11 +396,13 @@ struct ArtworkView: View {
             .onChange(of: model.media.trackID) { _, _ in seekPreview = nil; seeking = false }
         } else {
             VStack(spacing: 8) {
-                EmptyHaloState(symbol: "music.note", title: model.media.message == "Automation access is needed." ? "Connect your music" : "Your music, right here", detail: model.media.message) {
+                EmptyHaloState(symbol: "music.note", title: model.media.message == "Automation access is needed." ? "Connect your player" : "Now playing, right here", detail: model.media.message) {
                     if model.media.message == "Automation access is needed." {
                         Button("Open Privacy Settings") { NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation")!) }.buttonStyle(HaloButtonStyle())
                     } else {
-                        Button("Open player") { model.mediaService.openPlayer() }.buttonStyle(HaloButtonStyle())
+                        if model.preferences.musicProvider != .automatic {
+                            Button("Open player") { model.mediaService.openPlayer() }.buttonStyle(HaloButtonStyle())
+                        }
                         Button("Refresh") { model.mediaService.refresh() }.buttonStyle(HaloButtonStyle())
                     }
                 }

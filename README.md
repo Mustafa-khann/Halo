@@ -7,22 +7,22 @@
 <p align="center"><strong>A little more Mac.</strong></p>
 
 <p align="center">
-  <a href="https://github.com/Mustafa-khann/Halo/releases/download/v1.2.3-beta.1/Halo-1.2.3.dmg">Download Halo</a>
+  <a href="https://github.com/Mustafa-khann/Halo/releases/download/v1.3.0-beta.1/Halo-1.3.0.dmg">Download Halo</a>
   ·
-  <a href="https://github.com/Mustafa-khann/Halo/releases/tag/v1.2.3-beta.1">What’s new</a>
+  <a href="https://github.com/Mustafa-khann/Halo/releases/tag/v1.3.0-beta.1">What’s new</a>
 </p>
 
-Halo brings music, focus, files, and battery information to the space around your Mac’s camera notch. It opens with a hover, gives you room to do a little more, and settles back into the notch when you’re done.
+Halo brings media, focus, files, and battery information to the space around your Mac’s camera notch. It opens with a hover, gives you room to do a little more, and settles back into the notch when you’re done.
 
 Its frosted glass surface blurs the actual windows or wallpaper behind it. Quiet tabs, soft edges, and gentle feedback make every interaction feel at home on your Mac.
 
-**Current release: 1.2.3 beta.** Requires macOS 14 or later. One app for Apple silicon and Intel, with a floating option for displays without a notch.
+**Current release: 1.3.0 beta.** Requires macOS 14 or later. One app for Apple silicon and Intel, with a floating option for displays without a notch.
 
 ## Get started
 
 1. Download the DMG and drag **Halo** into **Applications**.
 2. Open Halo from Applications. It lives in the menu bar and around the notch.
-3. To connect your music, open **Settings → Activities**, turn on **Music**, and choose your player.
+3. To see what’s playing, open **Settings → Activities**, turn on **Media**, and leave **Playback source** set to **System Now Playing**.
 
 The beta is ad hoc signed and **not notarized by Apple**. If macOS blocks the first launch, and you trust this download, try opening Halo once, then choose **System Settings → Privacy & Security → Open Anyway** for Halo. [Apple’s guide to opening downloaded apps](https://support.apple.com/en-us/102445) explains the process.
 
@@ -31,17 +31,19 @@ You don’t need developer tools or Python to use Halo.
 <details>
 <summary>Verify your download</summary>
 
-Download the [SHA-256 checksum](https://github.com/Mustafa-khann/Halo/releases/download/v1.2.3-beta.1/Halo-1.2.3.dmg.sha256) and place it beside the DMG. In that folder, run:
+Download the [SHA-256 checksum](https://github.com/Mustafa-khann/Halo/releases/download/v1.3.0-beta.1/Halo-1.3.0.dmg.sha256) and place it beside the DMG. In that folder, run:
 
 ```sh
-shasum -a 256 -c Halo-1.2.3.dmg.sha256
+shasum -a 256 -c Halo-1.3.0.dmg.sha256
 ```
 
 </details>
 
 ## Keep the essentials close
 
-**Music, right here.** See what’s playing in Spotify or Apple Music. Play, pause, skip, and scrub through a track. Adjust your Mac’s system volume from the same view. Outputs with hardware-only volume controls show the slider as unavailable.
+**Now playing, right here.** Follow the player in your Mac’s Control Center. Music, Apple Podcasts, and videos from apps and browsers that publish Now Playing information appear automatically, with artwork and the name of the active app. Play, pause, skip, and scrub through supported media. Podcasts get 15-second controls; media without a duration keeps playback controls without a seek bar.
+
+Adjust your Mac’s system volume from the same view. Outputs with hardware-only volume controls show the slider as unavailable. Only media shared with macOS Now Playing can appear in Halo; individual players decide which controls they support.
 
 **A moment to focus.** Start with a 5, 15, 25, or 45-minute timer, or choose your own duration. Pause and resume as needed. Timers keep their place through sleep and app restarts, with sound and optional notifications when time is up.
 
@@ -51,7 +53,7 @@ shasum -a 256 -c Halo-1.2.3.dmg.sha256
 
 **Power, at a glance.** Check your battery level, charging state, and power source in the Battery tab. A brief indicator beside the notch lets you know when power connects or disconnects.
 
-Home brings your focus timer, file shelf, and music shortcuts together. Open a tab when you want more room for an activity.
+Home brings your focus timer, file shelf, and media shortcuts together. Open a tab when you want more room for an activity.
 
 ## Make it yours
 
@@ -65,9 +67,9 @@ Halo follows Reduce Motion when enabled in its settings. Reduce Transparency and
 
 ## Your Mac. Your choice.
 
-No account, subscription, or usage analytics. Music is off until you enable it, and macOS asks for Automation permission before Halo controls your player. Timer notifications are optional.
+No account, subscription, or usage analytics. Media is off until you enable it. System Now Playing reads the active media session locally and does not need Automation permission. If you choose the direct Spotify or Apple Music source, macOS asks for Automation permission. Timer notifications are optional.
 
-Halo doesn’t request Accessibility or Screen Recording access, record keystrokes, or upload your file shelf. File references stay on this Mac. Spotify artwork loads from the image URL supplied by Spotify.
+Halo doesn’t request Accessibility or Screen Recording access, record keystrokes, or upload your file shelf. File references stay on this Mac. System artwork comes from the media session. When using the direct Spotify source, artwork loads from the image URL supplied by Spotify.
 
 ## For developers
 
@@ -91,11 +93,11 @@ scripts/build.sh release
 scripts/package-dmg.sh
 ```
 
-The output is `dist/Halo.app`, `dist/Halo-1.2.3.dmg`, and its `.sha256` file. The DMG includes a drag-to-Applications layout.
+The output is `dist/Halo.app`, `dist/Halo-1.3.0.dmg`, and its `.sha256` file. The DMG includes a drag-to-Applications layout.
 
 Packaging requires Python 3.11 or later. The script installs pinned packaging tools in `.build/dmg-tools`; they are not included in the app. Set `HALO_PYTHON` to use a different Python executable.
 
-The 13 core tests cover timers and saved state, display geometry, media progress, preference migration, file shelf limits and drops, preserving original files, and Keep awake deadlines.
+The 20 core tests cover timers and saved state, display geometry, media progress and playback speed, system metadata updates and source changes, live media, malformed and partial stream records, preference migration, file shelf limits and drops, preserving original files, and Keep awake deadlines.
 
 ### Project layout
 
@@ -103,8 +105,11 @@ The 13 core tests cover timers and saved state, display geometry, media progress
 - `Tests/HaloTests` — core behavior tests.
 - `Resources` — app artwork, bundle information, and entitlements.
 - `scripts` — builds, tests, installer artwork, packaging, and notarization.
+- `ThirdParty/MediaRemoteAdapter` — pinned BSD-licensed source for the system media helper.
 
-`AppModel` connects preferences and services to the interface. `OverlayController` handles display placement, pointer routing, and shortcuts. `HaloDesign` and `HaloBackground` define the shared controls and native backdrop material. Music, system volume, file shelf, and Keep awake have separate services.
+`AppModel` connects preferences and services to the interface. `OverlayController` handles display placement, pointer routing, and shortcuts. `HaloDesign` and `HaloBackground` define the shared controls and native backdrop material. Media, system volume, file shelf, and Keep awake have separate services.
+
+System Now Playing uses the private macOS MediaRemote interface through the bundled [MediaRemote Adapter](https://github.com/ungive/mediaremote-adapter) framework and the system Perl interpreter. Its source is pinned and built for both architectures; the launcher and BSD license ship inside Halo. No runtime download or package installation is needed. Apple may change this interface in a future macOS release. If it becomes unavailable, choose the direct Spotify or Apple Music source in Activities. This beta is distributed outside the Mac App Store. See [third-party provenance](ThirdParty/MediaRemoteAdapter/PROVENANCE.md).
 
 </details>
 
@@ -121,6 +126,6 @@ scripts/notarize.sh
 
 The script rebuilds both architectures, signs the app and DMG, submits the DMG for notarization, staples and validates the ticket, checks Gatekeeper assessment, and updates the checksum. Building does not publish a release automatically.
 
-Before publishing, check playback and seeking with both players; file drops, dragging, and AirDrop; Keep awake expiry and stopping; timers across sleep and relaunch; Spaces, Stage Manager, and full-screen apps; display scaling and external monitors; VoiceOver; and a clean installation on Apple silicon and Intel Macs. A successful Intel build does not replace testing on Intel hardware.
+Before publishing, check Control Center source switching, Podcasts, supported browser videos, seeking, and direct player fallbacks; file drops, dragging, and AirDrop; Keep awake expiry and stopping; timers across sleep and relaunch; Spaces, Stage Manager, and full-screen apps; display scaling and external monitors; VoiceOver; and a clean installation on Apple silicon and Intel Macs. A successful Intel build does not replace testing on Intel hardware.
 
 </details>

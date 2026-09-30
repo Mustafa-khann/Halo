@@ -34,10 +34,16 @@ cp Resources/Info.plist "$app/Contents/Info.plist"
 swift scripts/artwork.swift "$halo_root"
 iconutil -c icns Resources/AppIcon.iconset -o "$app/Contents/Resources/AppIcon.icns"
 cp Resources/AppIcon.png "$app/Contents/Resources/AppIcon.png"
+mkdir -p "$app/Contents/Frameworks" "$app/Contents/Resources/MediaRemote"
+bash scripts/build-media-helper.sh "$app/Contents/Frameworks" "${architectures[@]}"
+cp ThirdParty/MediaRemoteAdapter/bin/mediaremote-adapter.pl "$app/Contents/Resources/MediaRemote/"
+cp ThirdParty/MediaRemoteAdapter/LICENSE "$app/Contents/Resources/MediaRemote/LICENSE"
 identity="${SIGNING_IDENTITY:--}"
 if [[ "$identity" == "-" ]]; then
+    codesign --force --sign - "$app/Contents/Frameworks/MediaRemoteAdapter.framework"
     codesign --force --sign - --options runtime --entitlements Resources/Halo.entitlements "$app"
 else
+    codesign --force --sign "$identity" --timestamp "$app/Contents/Frameworks/MediaRemoteAdapter.framework"
     codesign --force --sign "$identity" --timestamp --options runtime --entitlements Resources/Halo.entitlements "$app"
 fi
 codesign --verify --deep --strict "$app"

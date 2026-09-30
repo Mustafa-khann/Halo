@@ -56,28 +56,35 @@ import IOKit.ps
     private let queue = DispatchQueue(label: "app.halo.media", qos: .utility)
     private var enabled = false
     private var provider = MusicProvider.automatic
-    private var lastProvider = MusicProvider.spotify
     private var poller: Timer?
     private var observers: [NSObjectProtocol] = []
     private var busy = false
     private var generation = 0
     private var pendingRequests: [Request] = []
+    private lazy var system = SystemMediaService(receive: receive, controlError: controlError)
 
     init(receive: @escaping (MediaSnapshot) -> Void, controlError: @escaping (String?) -> Void) {
         self.receive = receive
         self.controlError = controlError
-        for (name, source) in [("com.spotify.client.PlaybackStateChanged", MusicProvider.spotify), ("com.apple.Music.playerInfo", .appleMusic)] {
+        for name in ["com.spotify.client.PlaybackStateChanged", "com.apple.Music.playerInfo"] {
             observers.append(DistributedNotificationCenter.default().addObserver(forName: .init(name), object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor in self?.lastProvider = source; self?.refresh() }
+                Task { @MainActor in
+                    guard let self, self.provider != .automatic else { return }
+                    self.refresh()
+                }
             })
         }
         for name in [NSWorkspace.didLaunchApplicationNotification, NSWorkspace.didTerminateApplicationNotification] {
             observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor in self?.refresh() }
+                Task { @MainActor in
+                    guard let self, self.provider != .automatic else { return }
+                    self.refresh()
+                }
             })
         }
     }
     func configure(enabled: Bool, provider: MusicProvider) {
+        system.stop()
         self.enabled = enabled
         self.provider = provider
         generation += 1
@@ -85,22 +92,24 @@ import IOKit.ps
         controlError(nil)
         poller?.invalidate()
         poller = nil
-        if enabled { refresh() } else { receive(MediaSnapshot()) }
+        if enabled {
+            if provider == .automatic { system.start() }
+            else { refresh() }
+        } else { receive(MediaSnapshot()) }
     }
-    func stop() { enabled = false; generation += 1; pendingRequests.removeAll(); poller?.invalidate(); poller = nil }
+    func stop() { system.stop(); enabled = false; generation += 1; pendingRequests.removeAll(); poller?.invalidate(); poller = nil }
     private func runningProvider() -> MusicProvider? {
-        let running = Set(NSWorkspace.shared.runningApplications.map(\.bundleIdentifier).compactMap { $0 })
-        if provider != .automatic { return running.contains(provider.bundleID) ? provider : nil }
-        for candidate in [lastProvider, lastProvider == .spotify ? .appleMusic : .spotify] {
-            if running.contains(candidate.bundleID) { return candidate }
-        }
-        return nil
+        guard provider != .automatic else { return nil }
+        return NSRunningApplication.runningApplications(withBundleIdentifier: provider.bundleID).contains(where: { !$0.isTerminated }) ? provider : nil
     }
     func refresh() {
-        guard enabled, !busy else { return }
+        guard enabled else { return }
+        if provider == .automatic { system.refresh(); return }
+        guard !busy else { return }
         guard let current = runningProvider() else {
             var empty = MediaSnapshot()
-            empty.message = "Open Spotify or Apple Music, then play something you love."
+            empty.provider = provider
+            empty.message = "Open \(provider.title), then play something you love."
             receive(empty)
             poller?.invalidate(); poller = nil
             return
@@ -121,11 +130,14 @@ import IOKit.ps
         }
     }
     func command(_ command: Command) {
-        guard enabled, let current = runningProvider() else { return }
+        guard enabled else { return }
+        if provider == .automatic { system.command(command); return }
+        guard let current = runningProvider() else { return }
         enqueue(Request(kind: .transport, provider: current, body: command.rawValue))
     }
     func seek(to seconds: Double, in snapshot: MediaSnapshot) {
-        guard snapshot.available, snapshot.duration > 0, seconds.isFinite, !snapshot.trackID.isEmpty else { return }
+        guard enabled, snapshot.canSeek, seconds.isFinite, snapshot.provider == provider else { return }
+        if provider == .automatic { system.seek(to: seconds, in: snapshot); return }
         let position = min(max(0, seconds), snapshot.duration)
         let idProperty = snapshot.provider == .spotify ? "id" : "persistent ID"
         let body = """
@@ -186,7 +198,8 @@ import IOKit.ps
         "\"" + string.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"") + "\""
     }
     func openPlayer() {
-        let selected = provider == .automatic ? lastProvider : provider
+        if provider == .automatic { system.openPlayer(); return }
+        let selected = provider
         if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: selected.bundleID) {
             NSWorkspace.shared.openApplication(at: url, configuration: .init())
         }
@@ -209,6 +222,8 @@ import IOKit.ps
         let (result, error) = execute(body)
         var snapshot = MediaSnapshot()
         snapshot.provider = provider
+        snapshot.sourceBundleID = provider.bundleID
+        snapshot.sourceName = provider.title
         if let error {
             let number = error[NSAppleScript.errorNumber] as? Int
             snapshot.message = number == -1743 ? "Automation access is needed." : "Your player isn’t ready. Start a track and try again."

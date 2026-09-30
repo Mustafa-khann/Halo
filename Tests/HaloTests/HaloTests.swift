@@ -138,4 +138,76 @@ struct HaloTests {
         #expect(FileManager.default.fileExists(atPath: original.path))
         #expect(shelf.add([original]) == 0)
     }
+    private func event(_ payload: [String: Any], diff: Bool = false) throws -> Data {
+        try JSONSerialization.data(withJSONObject: ["type": "data", "diff": diff, "payload": payload])
+    }
+    @Test func systemMediaReadsPodcastsAndPlaybackSpeed() throws {
+        var state = NowPlayingState()
+        let now = Date(timeIntervalSince1970: 1000)
+        let media = try state.consume(event([
+            "processIdentifier": 123, "bundleIdentifier": "com.apple.podcasts", "playing": true,
+            "title": "An episode", "artist": "A show", "mediaType": "MRMediaRemoteMediaTypePodcast",
+            "durationMicros": 600_000_000, "elapsedTimeMicros": 20_000_000,
+            "timestampEpochMicros": 990_000_000, "playbackRate": 1.5
+        ]), at: now)
+        #expect(media.provider == .automatic)
+        #expect(media.sourceBundleID == "com.apple.podcasts")
+        #expect(media.position == 35)
+        #expect(media.elapsed(at: now.addingTimeInterval(10)) == 50)
+        #expect(media.skipBackward && media.skipForward)
+        #expect(media.canSeek)
+    }
+    @Test func systemDiffsKeepArtworkAndNullRemovesIt() throws {
+        var state = NowPlayingState()
+        let image = Data([1, 2, 3])
+        _ = try state.consume(event(["processIdentifier": 123, "playing": false, "title": "First", "artworkData": image.base64EncodedString()]))
+        let paused = try state.consume(event(["elapsedTimeMicros": 40_000_000], diff: true))
+        #expect(paused.artworkData == image)
+        #expect(paused.position == 40)
+        let removed = try state.consume(event(["artworkData": NSNull()], diff: true))
+        #expect(removed.artworkData == nil)
+    }
+    @Test func changingSystemPlayerClearsOldMetadata() throws {
+        var state = NowPlayingState()
+        let previous = try state.consume(event(["processIdentifier": 123, "playing": false, "title": "Episode", "artist": "A show", "artworkData": "AQID"]))
+        let next = try state.consume(event(["processIdentifier": 456, "playing": true, "title": "A video", "bundleIdentifier": "com.apple.Safari"]))
+        #expect(next.sourceBundleID == "com.apple.Safari")
+        #expect(next.artist.isEmpty && next.artworkData == nil)
+        #expect(next.trackID != previous.trackID)
+        let empty = try state.consume(event([:]))
+        #expect(!empty.available && empty.artworkData == nil)
+    }
+    @Test func untaggedAndLiveMediaRemainControllableWithoutSeeking() throws {
+        let now = Date(timeIntervalSince1970: 1000)
+        let data = try JSONSerialization.data(withJSONObject: ["processIdentifier": 456, "playing": true, "elapsedTimeMicros": 20_000_000])
+        let live = try NowPlayingState.decodeRecord(data, at: now)
+        #expect(live.available && live.title == "Now Playing")
+        #expect(!live.canSeek)
+        #expect(live.elapsed(at: now.addingTimeInterval(5)) == 25)
+        #expect(!(try NowPlayingState.decodeRecord(Data("null".utf8))).available)
+    }
+    @Test func malformedSystemRecordsAreRejectedOrSafe() throws {
+        var state = NowPlayingState()
+        #expect(throws: (any Error).self) { try state.consume(Data("{\"payload\":123}".utf8)) }
+        let invalidPID = try state.consume(event(["processIdentifier": true, "playing": true]))
+        #expect(!invalidPID.available)
+        let badTimes = try state.consume(event(["processIdentifier": 123, "playing": false, "durationMicros": "broken", "elapsedTimeMicros": -10, "artworkData": "invalid!"]))
+        #expect(badTimes.available && !badTimes.canSeek)
+        #expect(badTimes.position == 0 && badTimes.artworkData == nil)
+    }
+    @Test func systemStreamHandlesPartialAndMultipleLines() throws {
+        var buffer = NowPlayingLineBuffer()
+        let first = try event(["processIdentifier": 123, "playing": false])
+        let second = try event([:], diff: false)
+        #expect(try buffer.append(first.prefix(10)).isEmpty)
+        var tail = Data(first.dropFirst(10)); tail.append(10); tail.append(second); tail.append(10)
+        #expect(try buffer.append(tail) == [first, second])
+        #expect(throws: (any Error).self) { try buffer.append(Data(repeating: 65, count: NowPlayingLineBuffer.maximumLineBytes + 1)) }
+    }
+    @Test func existingAutomaticPreferenceUsesSystemNowPlaying() throws {
+        let prefs = try JSONDecoder().decode(Preferences.self, from: Data("{\"musicEnabled\":true,\"musicProvider\":\"automatic\"}".utf8))
+        #expect(prefs.musicEnabled && prefs.musicProvider == .automatic)
+        #expect(prefs.musicProvider.title == "System Now Playing")
+    }
+
 }

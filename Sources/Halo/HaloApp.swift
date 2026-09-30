@@ -110,7 +110,7 @@ import UserNotifications
     @objc private func toggleVisibility() { model.overlayEnabled.toggle(); model.close(); overlay.refreshVisibility() }
     @objc private func aboutHalo() {
         NSApp.activate(ignoringOtherApps: true)
-        NSApp.orderFrontStandardAboutPanel(options: [.applicationName: "Halo", .credits: NSAttributedString(string: "A little more Mac.\nNative music, battery, and focus at your fingertips.")])
+        NSApp.orderFrontStandardAboutPanel(options: [.applicationName: "Halo", .credits: NSAttributedString(string: "A little more Mac.\nMedia, battery, and focus at your fingertips.")])
     }
     @objc private func quit() { NSApp.terminate(nil) }
     @objc func openSettings() {

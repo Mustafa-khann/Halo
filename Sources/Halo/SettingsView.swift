@@ -51,7 +51,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
                 List(SettingsPage.allCases, selection: $page) { item in
                     Label(item.title, systemImage: item.symbol).font(.system(size: 13)).padding(.vertical, 4).tag(item)
                 }.listStyle(.sidebar)
-                HStack { Text(model.preferences.shortcut.glyphs).font(.system(size: 10, design: .monospaced)); Spacer(); Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.2.3") }
+                HStack { Text(model.preferences.shortcut.glyphs).font(.system(size: 10, design: .monospaced)); Spacer(); Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.3.0") }
                     .font(.system(size: 10)).foregroundStyle(.tertiary).padding(19)
             }.navigationSplitViewColumnWidth(min: 185, ideal: 195, max: 210)
         } detail: {
@@ -153,20 +153,20 @@ enum SettingsPage: String, CaseIterable, Identifiable {
     private var activities: some View {
         Form {
             Section {
-                Toggle("Music", isOn: preference(\.musicEnabled))
-                Picker("Preferred player", selection: preference(\.musicProvider)) {
+                Toggle("Media", isOn: preference(\.musicEnabled))
+                Picker("Playback source", selection: preference(\.musicProvider)) {
                     ForEach(MusicProvider.allCases) { Text($0.title).tag($0) }
                 }.disabled(!model.preferences.musicEnabled)
-                Text("Spotify and Apple Music. macOS will ask before Halo controls your player.").font(.caption).foregroundStyle(.secondary)
+                Text(model.preferences.musicProvider == .automatic ? "Follow Control Center’s Now Playing, including music, podcasts, and supported videos." : "Connect directly to your selected player. macOS will ask for Automation access.").font(.caption).foregroundStyle(.secondary)
                 if model.preferences.musicEnabled {
                     HStack {
-                        Label(model.media.available ? "Connected to \(model.media.provider.title)" : model.media.message, systemImage: model.media.available ? "checkmark.circle.fill" : "music.note")
+                        Label(model.media.available ? "Connected to \(model.media.playerName)" : model.media.message, systemImage: model.media.available ? "checkmark.circle.fill" : "music.note")
                             .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                         Spacer()
                         Button("Refresh") { model.mediaService.refresh() }.controlSize(.small)
                     }
                 }
-            } header: { Label("Music, right here", systemImage: "music.note") }
+            } header: { Label("Now playing, right here", systemImage: "music.note") }
             Section {
                 Toggle("Focus timers", isOn: preference(\.timerEnabled))
                 Toggle("Play a sound when a timer ends", isOn: preference(\.playTimerSound))
@@ -197,10 +197,10 @@ enum SettingsPage: String, CaseIterable, Identifiable {
                 Image(nsImage: NSImage(named: NSImage.applicationIconName) ?? NSImage()).resizable().frame(width: 112, height: 112).padding(.top, 24)
                 Text("Halo").font(.system(size: 32, weight: .medium))
                 Text("A little more Mac.").font(.system(size: 15)).foregroundStyle(.secondary)
-                Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.2.3")").font(.system(size: 11)).foregroundStyle(.tertiary)
+                Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.3.0")").font(.system(size: 11)).foregroundStyle(.tertiary)
                 Divider().padding(.vertical, 12)
                 VStack(alignment: .leading, spacing: 16) {
-                    aboutRow("hand.raised", "Your Mac, your choice.", "Music access is optional. Halo never records your keystrokes or sends usage analytics.")
+                    aboutRow("hand.raised", "Your Mac, your choice.", "Media access is optional. Halo never records your keystrokes or sends usage analytics.")
                     aboutRow("sparkles", "Small by design.", "Native SwiftUI and AppKit. No account, no subscription, and no background animation when Halo is idle.")
                     aboutRow("laptopcomputer", "At home on your Mac.", "macOS Sonoma 14 or later. Built for Apple silicon and Intel, with support for notched and external displays.")
                 }

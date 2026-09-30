@@ -51,7 +51,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
                 List(SettingsPage.allCases, selection: $page) { item in
                     Label(item.title, systemImage: item.symbol).font(.system(size: 12)).padding(.vertical, 3).tag(item)
                 }.listStyle(.sidebar)
-                HStack { Text(model.preferences.shortcut.glyphs).font(.system(size: 10, design: .monospaced)); Spacer(); Text("1.0") }
+                HStack { Text(model.preferences.shortcut.glyphs).font(.system(size: 10, design: .monospaced)); Spacer(); Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.1.0") }
                     .font(.system(size: 10)).foregroundStyle(.tertiary).padding(19)
             }.navigationSplitViewColumnWidth(min: 185, ideal: 195, max: 210)
         } detail: {
@@ -174,6 +174,16 @@ enum SettingsPage: String, CaseIterable, Identifiable {
                     if value { model.requestTimerNotifications() } else { model.preferences.timerNotifications = false }
                 }))
             } header: { Label("A moment to focus", systemImage: "timer") } footer: { Text("Timers keep their place through sleep and app restarts.") }
+            Section {
+                Toggle("File shelf", isOn: preference(\.filesEnabled))
+                Text("Drop files onto Halo to keep them close. Drag them into apps, copy them, or share with AirDrop. Removing a file from the shelf leaves the original in place.").font(.caption).foregroundStyle(.secondary)
+                LabeledContent("Files on your shelf", value: "\(model.fileShelf.state.files.count) of 20")
+                Button("Clear file shelf") { model.fileShelf.clear() }.disabled(model.fileShelf.state.files.isEmpty)
+            } header: { Label("A place for your files", systemImage: "tray") } footer: { Text("File references are saved only on this Mac. Halo does not copy or upload your files automatically.") }
+            Section {
+                Toggle("Keep awake", isOn: preference(\.keepAwakeEnabled))
+                Text("Keep your Mac awake for presentations, downloads, and long tasks. Start a timed session or stop it yourself from the Awake tab.").font(.caption).foregroundStyle(.secondary)
+            } header: { Label("Stay with it", systemImage: "cup.and.saucer") } footer: { Text("Sessions end when Halo quits or your Mac sleeps. Disabling this activity ends the current session.") }
             Section {
                 Toggle("Battery status", isOn: preference(\.batteryEnabled))
                 Toggle("Briefly show charging changes", isOn: preference(\.chargingAlerts))

@@ -65,6 +65,8 @@ final class HaloPanel: NSPanel {
     private var closeWork: DispatchWorkItem?
     private var pointerInside = false
     private var trackingPointer = false
+    private var fileDragMonitor: Timer?
+    private var dragPasteboardBaseline = NSPasteboard(name: .drag).changeCount
     private let shortcuts = ShortcutController()
 
     init(model: AppModel) { self.model = model }
@@ -87,7 +89,7 @@ final class HaloPanel: NSPanel {
             Task { @MainActor in self?.position() }
         })
         observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.willSleepNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.model.close(); self?.panel?.orderOut(nil) }
+            Task { @MainActor in self?.model.keepAwake.stop(); self?.model.close(); self?.panel?.orderOut(nil) }
         })
         for name in [NSWorkspace.didWakeNotification, NSWorkspace.activeSpaceDidChangeNotification] {
             observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
@@ -106,6 +108,8 @@ final class HaloPanel: NSPanel {
     }
     func stop() {
         hoverWork?.cancel(); closeWork?.cancel()
+        fileDragMonitor?.invalidate()
+        fileDragMonitor = nil
         if let globalMonitor { NSEvent.removeMonitor(globalMonitor) }
         if let localMonitor { NSEvent.removeMonitor(localMonitor) }
         for observer in observers {
@@ -169,24 +173,69 @@ final class HaloPanel: NSPanel {
         return true
     }
     private func updateMouseRouting() { panel?.ignoresMouseEvents = !trackingPointer && !containsPointer() }
+    private func monitorFileDrag() {
+        guard fileDragMonitor == nil, model.preferences.filesEnabled else { return }
+        // A drag session can stop delivering ordinary mouse events. Only while
+        // a drag is held, track its pointer so the notch remains a drop target.
+        fileDragMonitor = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.trackFileDrag() }
+        }
+        if let fileDragMonitor { RunLoop.main.add(fileDragMonitor, forMode: .common) }
+    }
+    private func trackFileDrag() {
+        if NSEvent.pressedMouseButtons & 1 == 0 || !model.overlayEnabled || !model.preferences.filesEnabled {
+            fileDragMonitor?.invalidate(); fileDragMonitor = nil
+            updateMouseRouting()
+            return
+        }
+        let pasteboard = NSPasteboard(name: .drag)
+        guard pasteboard.changeCount != dragPasteboardBaseline,
+              pasteboard.canReadObject(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) else { return }
+        let point = NSEvent.mouseLocation
+        if haloRect.insetBy(dx: -20, dy: -12).contains(point) {
+            hoverWork?.cancel(); closeWork?.cancel(); closeWork = nil
+            if !model.expanded || model.selectedTab != .files { model.open(tab: .files) }
+            panel?.ignoresMouseEvents = false
+            pointerInside = true
+        } else if model.expanded && !model.pinned && !model.fileShelf.draggingOver && !model.interactionInProgress && closeWork == nil {
+            let work = DispatchWorkItem { [weak self] in
+                guard let self else { return }
+                self.closeWork = nil
+                if !self.containsPointer() && !self.model.pinned && !self.model.fileShelf.draggingOver && !self.model.interactionInProgress { self.model.close() }
+            }
+            closeWork = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + model.preferences.collapseDelay, execute: work)
+        }
+    }
     private func handleMouse(_ event: NSEvent) {
         // Local events carry the actual window position, including during native
         // slider tracking. The global cursor can lag behind the delivered event.
         let point = event.window?.convertPoint(toScreen: event.locationInWindow) ?? NSEvent.mouseLocation
         let inside = containsPointer(at: point)
         let type = event.type
+        if type == .leftMouseDown { dragPasteboardBaseline = NSPasteboard(name: .drag).changeCount }
+        if type == .leftMouseDragged && !trackingPointer { monitorFileDrag() }
         if type == .leftMouseDragged, trackingPointer { return }
+        if type == .leftMouseDragged, inside, model.preferences.filesEnabled,
+           NSPasteboard(name: .drag).canReadObject(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) {
+            hoverWork?.cancel(); closeWork?.cancel(); closeWork = nil
+            if !model.expanded || model.selectedTab != .files { model.open(tab: .files) }
+            pointerInside = true
+            updateMouseRouting()
+            return
+        }
         if type == .leftMouseUp { trackingPointer = false }
         panel?.ignoresMouseEvents = !trackingPointer && !inside
         if type == .leftMouseDown || type == .rightMouseDown {
-            hoverWork?.cancel(); closeWork?.cancel()
+            hoverWork?.cancel(); closeWork?.cancel(); closeWork = nil
             trackingPointer = type == .leftMouseDown && inside
-            if !inside && model.expanded { model.close() }
+            if !inside && model.expanded && !model.interactionInProgress { model.close() }
             else if inside && !model.expanded { model.open(pin: true) }
             return
         }
         if inside {
             closeWork?.cancel()
+            closeWork = nil
             if !pointerInside && !model.expanded && model.preferences.openOnHover {
                 hoverWork?.cancel()
                 let work = DispatchWorkItem { [weak self] in
@@ -198,9 +247,10 @@ final class HaloPanel: NSPanel {
             }
         } else {
             hoverWork?.cancel()
-            if pointerInside && model.expanded && !model.pinned {
+            if pointerInside && model.expanded && !model.pinned && !model.interactionInProgress && !model.fileShelf.draggingOver {
                 let work = DispatchWorkItem { [weak self] in
-                    guard let self, !self.containsPointer(), !self.model.pinned else { return }
+                    guard let self, !self.containsPointer(), !self.model.pinned, !self.model.interactionInProgress, !self.model.fileShelf.draggingOver else { return }
+                    self.closeWork = nil
                     self.model.close()
                 }
                 closeWork = work

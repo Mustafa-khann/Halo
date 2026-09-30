@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 // Keep the stable property wrapper unambiguous with SDKs that also export a State macro.
 typealias ViewState<Value> = SwiftUI.State<Value>
@@ -68,10 +69,17 @@ struct HaloButtonStyle: ButtonStyle {
                 if model.expanded {
                     HaloShape(topRadius: 12, bottomRadius: 28).strokeBorderFallback(Color.white.opacity(0.065))
                 }
+                if model.preferences.filesEnabled && model.fileShelf.draggingOver {
+                    HaloShape(topRadius: 12, bottomRadius: 28).stroke(HaloPalette.accent, lineWidth: 2)
+                        .allowsHitTesting(false)
+                }
             }
             .shadow(color: .black.opacity(model.expanded ? 0.32 : 0), radius: 18, x: 0, y: 10)
             .contentShape(Rectangle())
             .onTapGesture { if !model.expanded { model.open(pin: true) } }
+            .onDrop(of: [UTType.fileURL], isTargeted: Binding(get: { model.fileShelf.draggingOver }, set: { model.fileShelf.draggingOver = $0 })) { providers in
+                model.preferences.filesEnabled && model.fileShelf.acceptDrop(providers)
+            }
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -80,6 +88,9 @@ struct HaloButtonStyle: ButtonStyle {
         .animation(model.reduceMotion ? .easeOut(duration: 0.08) : .spring(response: model.preferences.animationSpeed, dampingFraction: 0.86), value: model.expanded)
         .animation(model.reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.9), value: model.compactActivity)
         .onChange(of: model.tabs) { _, tabs in if !tabs.contains(model.selectedTab) { model.selectedTab = .overview } }
+        .onChange(of: model.fileShelf.draggingOver) { _, over in
+            if over && model.preferences.filesEnabled { model.open(tab: .files) }
+        }
     }
 
     private var header: some View {
@@ -117,6 +128,8 @@ struct HaloButtonStyle: ButtonStyle {
             Image(systemName: model.power.onAC ? "bolt.fill" : "battery.100percent").foregroundStyle(.green).font(.system(size: 14))
         } else if model.timer.active || model.timer.phase == .finished {
             Image(systemName: model.timer.phase == .finished ? "checkmark.circle.fill" : "timer").foregroundStyle(.orange).font(.system(size: 14))
+        } else if model.keepAwake.session.active {
+            Image(systemName: "cup.and.saucer.fill").foregroundStyle(HaloPalette.accent).font(.system(size: 14))
         } else {
             ArtworkView(url: model.media.artworkURL, size: 21)
         }
@@ -127,6 +140,9 @@ struct HaloButtonStyle: ButtonStyle {
         } else if model.timer.active || model.timer.phase == .finished {
             Text(model.timer.phase == .finished ? "Done" : clockString(model.timer.remaining(at: model.now)))
                 .font(.system(size: 11, weight: .medium, design: .monospaced)).foregroundStyle(.orange)
+        } else if model.keepAwake.session.active {
+            Text(model.keepAwake.session.remaining(at: model.keepAwake.now).map { clockString($0) } ?? "Awake")
+                .font(.system(size: 10, weight: .medium, design: .monospaced)).foregroundStyle(HaloPalette.accent)
         } else {
             Image(systemName: "waveform").font(.system(size: 15)).foregroundStyle(HaloPalette.accent)
         }
@@ -154,6 +170,8 @@ struct HaloButtonStyle: ButtonStyle {
                 case .overview: OverviewView(model: model)
                 case .music: MusicView(model: model)
                 case .timer: TimerHaloView(model: model)
+                case .files: FileShelfView(shelf: model.fileShelf)
+                case .awake: KeepAwakeView(service: model.keepAwake)
                 case .power: PowerView(model: model)
                 }
             }.padding(.horizontal, 24).frame(maxWidth: .infinity).frame(height: 174)
@@ -200,7 +218,19 @@ struct ArtworkView: View {
                             .contentShape(Rectangle())
                     }.buttonStyle(.plain)
                 }
-                if !model.preferences.timerEnabled {
+                if model.preferences.filesEnabled {
+                    Button { model.selectedTab = .files } label: {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Label("Within reach", systemImage: "tray").font(.system(size: 11)).foregroundStyle(HaloPalette.secondary)
+                            Text(model.fileShelf.state.files.isEmpty ? "Drop files" : "\(model.fileShelf.state.files.count) \(model.fileShelf.state.files.count == 1 ? "file" : "files")")
+                                .font(.system(size: 26, weight: .medium, design: .rounded)).lineLimit(1).minimumScaleFactor(0.8)
+                            Text("Open your shelf").font(.system(size: 10)).foregroundStyle(HaloPalette.secondary)
+                        }.frame(maxWidth: .infinity, alignment: .leading).padding(13)
+                            .background(HaloPalette.card, in: RoundedRectangle(cornerRadius: 15))
+                            .contentShape(Rectangle())
+                    }.buttonStyle(.plain)
+                }
+                if !model.preferences.timerEnabled && !model.preferences.filesEnabled {
                     Text("Make Halo your own in Settings.").font(.system(size: 12)).foregroundStyle(HaloPalette.secondary).frame(height: 95)
                 }
             }
@@ -210,6 +240,12 @@ struct ArtworkView: View {
                         Label(model.media.available ? model.media.title : "Music", systemImage: "music.note")
                             .lineLimit(1).padding(.vertical, 5).contentShape(Rectangle())
                     }
+                }
+                if model.keepAwake.session.active {
+                    Button { model.selectedTab = .awake } label: {
+                        Label("Awake", systemImage: "cup.and.saucer.fill")
+                            .padding(.vertical, 5).contentShape(Rectangle())
+                    }.foregroundStyle(HaloPalette.accent)
                 }
                 Spacer()
                 Button { model.showSettings?() } label: {

@@ -2,13 +2,15 @@ import AppKit
 import Foundation
 
 enum HaloTab: String, CaseIterable, Identifiable {
-    case overview, music, timer, power
+    case overview, music, timer, files, awake, power
     var id: String { rawValue }
     var title: String {
         switch self {
         case .overview: return "Home"
         case .music: return "Music"
         case .timer: return "Timer"
+        case .files: return "Files"
+        case .awake: return "Awake"
         case .power: return "Battery"
         }
     }
@@ -17,6 +19,8 @@ enum HaloTab: String, CaseIterable, Identifiable {
         case .overview: return "square.grid.2x2"
         case .music: return "music.note"
         case .timer: return "timer"
+        case .files: return "tray"
+        case .awake: return "cup.and.saucer"
         case .power: return "battery.100percent"
         }
     }
@@ -71,13 +75,15 @@ struct Preferences: Codable, Equatable {
     var musicProvider = MusicProvider.automatic
     var timerEnabled = true
     var batteryEnabled = true
+    var filesEnabled = true
+    var keepAwakeEnabled = true
     var playTimerSound = true
     var timerNotifications = false
     var shortcut = GlobalShortcut.controlOptionH
 
     init() {}
     private enum CodingKeys: String, CodingKey {
-        case openOnHover, hoverDelay, collapseDelay, animationSpeed, expandedWidth, showCompactActivity, showInFullScreen, showOnUnnotchedDisplay, respectReduceMotion, chargingAlerts, musicEnabled, musicProvider, timerEnabled, batteryEnabled, playTimerSound, timerNotifications, shortcut
+        case openOnHover, hoverDelay, collapseDelay, animationSpeed, expandedWidth, showCompactActivity, showInFullScreen, showOnUnnotchedDisplay, respectReduceMotion, chargingAlerts, musicEnabled, musicProvider, timerEnabled, batteryEnabled, filesEnabled, keepAwakeEnabled, playTimerSound, timerNotifications, shortcut
     }
     init(from decoder: Decoder) throws {
         self.init()
@@ -96,6 +102,8 @@ struct Preferences: Codable, Equatable {
         musicProvider = try values.decodeIfPresent(MusicProvider.self, forKey: .musicProvider) ?? musicProvider
         timerEnabled = try values.decodeIfPresent(Bool.self, forKey: .timerEnabled) ?? timerEnabled
         batteryEnabled = try values.decodeIfPresent(Bool.self, forKey: .batteryEnabled) ?? batteryEnabled
+        filesEnabled = try values.decodeIfPresent(Bool.self, forKey: .filesEnabled) ?? filesEnabled
+        keepAwakeEnabled = try values.decodeIfPresent(Bool.self, forKey: .keepAwakeEnabled) ?? keepAwakeEnabled
         playTimerSound = try values.decodeIfPresent(Bool.self, forKey: .playTimerSound) ?? playTimerSound
         timerNotifications = try values.decodeIfPresent(Bool.self, forKey: .timerNotifications) ?? timerNotifications
         shortcut = try values.decodeIfPresent(GlobalShortcut.self, forKey: .shortcut) ?? shortcut

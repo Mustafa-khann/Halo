@@ -1,4 +1,4 @@
-import Foundation
+import AppKit
 import Testing
 @testable import Halo
 
@@ -10,6 +10,8 @@ struct HaloTests {
         #expect(preferences.expandedWidth == 500)
         #expect(preferences.shortcut == .controlOptionH)
         #expect(!preferences.musicEnabled)
+        #expect(preferences.filesEnabled)
+        #expect(preferences.keepAwakeEnabled)
     }
     @Test func timerUsesDeadlineAcrossSleep() {
         let start = Date(timeIntervalSince1970: 1000)
@@ -73,5 +75,67 @@ struct HaloTests {
         preferences.openOnHover = false
         preferences.save(to: defaults)
         #expect(Preferences.load(from: defaults) == preferences)
+    }
+    @Test func shelfDeduplicatesNormalizedPathsAndRejectsWebURLs() {
+        var shelf = FileShelfState()
+        let file = URL(fileURLWithPath: "/tmp/halo-fixtures/report.pdf")
+        let sameFile = URL(fileURLWithPath: "/tmp/halo-fixtures/subfolder/../report.pdf")
+        #expect(shelf.add([file, sameFile, URL(string: "https://example.com/report.pdf")!]) == 1)
+        #expect(shelf.files.count == 1)
+        #expect(shelf.files.first?.url == file.resolvingSymlinksInPath())
+    }
+    @Test func fullShelfKeepsExistingFilesAndDoesNotEvictThem() {
+        var shelf = FileShelfState()
+        let urls = (0..<25).map { URL(fileURLWithPath: "/tmp/halo-file-\($0)") }
+        #expect(shelf.add(urls) == FileShelfState.capacity)
+        #expect(shelf.files.map(\.url) == Array(urls.prefix(FileShelfState.capacity)).map { $0.resolvingSymlinksInPath() })
+    }
+    @MainActor @Test func removingShelfReferencePreservesOriginalAndSavedState() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("halo-shelf-test-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let original = folder.appendingPathComponent("keep-me.txt")
+        try Data("Original stays intact".utf8).write(to: original)
+        let suite = "app.halo.shelf.tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let shelf = FileShelfService(defaults: defaults)
+        #expect(shelf.add([original]) == 1)
+        let restored = FileShelfService(defaults: defaults)
+        #expect(restored.state.files.first?.url == original.resolvingSymlinksInPath())
+        shelf.clear()
+        #expect(FileShelfService(defaults: defaults).state.files.isEmpty)
+        #expect(try Data(contentsOf: original) == Data("Original stays intact".utf8))
+    }
+    @Test func awakeDeadlineExpiresAcrossSleepAndIndefiniteSessionsHaveNoDeadline() {
+        let start = Date(timeIntervalSince1970: 1000)
+        let timed = AwakeSession(active: true, deadline: start.addingTimeInterval(900))
+        #expect(timed.remaining(at: start.addingTimeInterval(300)) == 600)
+        #expect(!timed.expired(at: start.addingTimeInterval(899)))
+        #expect(timed.expired(at: start.addingTimeInterval(900)))
+        #expect(timed.remaining(at: start.addingTimeInterval(1200)) == 0)
+        let indefinite = AwakeSession(active: true)
+        #expect(indefinite.remaining(at: start) == nil)
+        #expect(!indefinite.expired(at: start.addingTimeInterval(100_000)))
+        #expect(AwakeDuration.untilStopped.seconds == nil)
+    }
+    @MainActor @Test func finderStyleDropLoadsFileURLsAndLeavesTheOriginalInPlace() async throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("halo-drop-test-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let original = folder.appendingPathComponent("drop-me.txt")
+        try Data("Drag and drop fixture".utf8).write(to: original)
+        let suite = "app.halo.drop.tests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let shelf = FileShelfService(defaults: defaults)
+        let provider = NSItemProvider(object: original as NSURL)
+        #expect(shelf.acceptDrop([provider]))
+        for _ in 0..<200 where shelf.loading { try await Task.sleep(for: .milliseconds(10)) }
+        #expect(!shelf.loading)
+        #expect(shelf.state.files.count == 1)
+        #expect(shelf.state.files.first?.url == original.standardizedFileURL.resolvingSymlinksInPath())
+        #expect(FileManager.default.fileExists(atPath: original.path))
+        #expect(shelf.add([original]) == 0)
     }
 }

@@ -9,6 +9,7 @@ import UserNotifications
             if preferences.musicEnabled != oldValue.musicEnabled || preferences.musicProvider != oldValue.musicProvider {
                 mediaService.configure(enabled: preferences.musicEnabled, provider: preferences.musicProvider)
             }
+            if !preferences.keepAwakeEnabled { keepAwake.stop() }
             onPreferencesChanged?()
         }
     }
@@ -25,6 +26,9 @@ import UserNotifications
     @Published var chargingToast = false
     @Published var overlayEnabled = true
     @Published var shortcutAvailable = true
+    @Published var interactionInProgress = false
+    let fileShelf = FileShelfService()
+    let keepAwake = KeepAwakeService()
     var onPreferencesChanged: (() -> Void)?
     var onExpansionChanged: (() -> Void)?
     var showSettings: (() -> Void)?
@@ -33,6 +37,7 @@ import UserNotifications
     var volumeService: SystemVolumeService!
     private var ticker: Timer?
     private var toastTask: Task<Void, Never>?
+    private var serviceObservers = Set<AnyCancellable>()
 
     init() {
         if let data = UserDefaults.standard.data(forKey: "halo.timer.v1"), let saved = try? JSONDecoder().decode(TimerSession.self, from: data) {
@@ -45,7 +50,10 @@ import UserNotifications
         mediaService = MediaService(receive: { [weak self] snapshot in self?.media = snapshot },
                                     controlError: { [weak self] error in self?.mediaControlError = error })
         volumeService = SystemVolumeService { [weak self] snapshot in self?.systemVolume = snapshot }
-
+        fileShelf.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &serviceObservers)
+        keepAwake.objectWillChange.sink { [weak self] _ in self?.objectWillChange.send() }.store(in: &serviceObservers)
+        fileShelf.onFilesAdded = { [weak self] in self?.open(pin: true, tab: .files) }
+        fileShelf.onInteractionChanged = { [weak self] active in self?.interactionInProgress = active }
     }
 
     func start() {
@@ -59,14 +67,15 @@ import UserNotifications
         powerService.stop()
         volumeService.stop()
         mediaService.stop()
+        keepAwake.stop()
         persistTimer()
     }
 
     var tabs: [HaloTab] {
-        [.overview] + (preferences.musicEnabled ? [.music] : []) + (preferences.timerEnabled || timer.active || timer.phase == .finished ? [.timer] : []) + (preferences.batteryEnabled ? [.power] : [])
+        [.overview] + (preferences.musicEnabled ? [.music] : []) + (preferences.timerEnabled || timer.active || timer.phase == .finished ? [.timer] : []) + (preferences.filesEnabled ? [.files] : []) + (preferences.keepAwakeEnabled ? [.awake] : []) + (preferences.batteryEnabled ? [.power] : [])
     }
     var compactActivity: Bool {
-        preferences.showCompactActivity && (chargingToast || timer.active || timer.phase == .finished || (preferences.musicEnabled && media.playing))
+        preferences.showCompactActivity && (chargingToast || timer.active || timer.phase == .finished || keepAwake.session.active || (preferences.musicEnabled && media.playing))
     }
     var currentWidth: CGFloat {
         if expanded { return geometry.expandedWidth(preference: preferences.expandedWidth) }

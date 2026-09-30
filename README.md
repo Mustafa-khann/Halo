@@ -6,7 +6,7 @@ A native macOS companion that makes the camera notch a little more useful. Halo 
 
 ## Download and install
 
-[Download the Halo beta DMG](https://github.com/Mustafa-khann/Halo/releases/download/v1.2.0-beta.1/Halo-1.2.0.dmg) · [Release notes and checksum](https://github.com/Mustafa-khann/Halo/releases/tag/v1.2.0-beta.1)
+[Download the Halo beta DMG](https://github.com/Mustafa-khann/Halo/releases/download/v1.2.1-beta.1/Halo-1.2.1.dmg) · [Release notes and checksum](https://github.com/Mustafa-khann/Halo/releases/tag/v1.2.1-beta.1)
 
 1. Open the downloaded DMG and drag **Halo** into **Applications**.
 2. Launch **Halo** from Applications. It appears in the menu bar and around the camera notch.
@@ -19,7 +19,7 @@ Halo supports **macOS 14 or later**, with one universal app for **Apple silicon 
 To verify the download, place the DMG and its `.sha256` file in the same folder and run:
 
 ```sh
-shasum -a 256 -c Halo-1.2.0.dmg.sha256
+shasum -a 256 -c Halo-1.2.1.dmg.sha256
 ```
 
 ## Features
@@ -31,7 +31,7 @@ shasum -a 256 -c Halo-1.2.0.dmg.sha256
 - A local file shelf: drop files onto Halo, drag individual files into other apps, select several files for AirDrop or copying, open them, or reveal them in Finder. File references survive relaunch, with duplicate detection and a 20-file limit. Removing an item never deletes the original.
 - Keep awake for 15 minutes, 30 minutes, an hour, two hours, or until stopped. Optionally keep the display awake too. Timed sessions use macOS-managed timeouts, and all sessions end on quit or system sleep. Manual sleep and lid-close sleep still work normally.
 - A nonactivating panel, configurable Control–Option–H shortcut, Escape dismissal, pinning, and delayed hover expansion.
-- A polished graphite interface with SF typography, softly rounded cards, larger music artwork, a focus progress ring, and consistent controls. Tabs switch on hover across their full padded area, with a gently moving selection highlight. Battery details live in the Battery tab.
+- A frosted gradient interface with native desktop blur, soft lavender, blue, and teal color, SF typography, softly rounded cards, larger music artwork, a focus progress ring, and consistent controls. The camera area stays black; Reduce Transparency and increased contrast use an opaque background. Tabs switch on hover across their full padded area, with a gently moving selection highlight. Battery details live in the Battery tab.
 - Native settings, system appearance, Reduce Motion support, launch at login, and a floating fallback for displays without a notch.
 
 Halo requires macOS Sonoma 14 or later. The release bundle includes Apple silicon and Intel binaries. It lives in the menu bar rather than the Dock.
@@ -63,7 +63,7 @@ scripts/package-dmg.sh
 
 The installer script uses Python 3.11 or later and installs its pinned packaging dependencies in `.build/dmg-tools`. Set `HALO_PYTHON` if your Python executable has another name. These dependencies generate the Finder layout and are not shipped or needed by Halo itself.
 
-Outputs are `dist/Halo.app`, `dist/Halo-1.2.0.dmg`, and a SHA-256 checksum. The disk image has a drag-to-Applications layout and custom artwork.
+Outputs are `dist/Halo.app`, `dist/Halo-1.2.1.dmg`, and a SHA-256 checksum. The disk image has a drag-to-Applications layout and custom artwork.
 
 ## Signing a notarized release
 
@@ -83,4 +83,4 @@ For a release candidate, manually check music controls with each connected playe
 
 ## Structure
 
-`AppModel` owns persisted preferences and activity state. `PowerService` uses IOKit notifications. `SystemVolumeService` uses Core Audio output-device volume and mute controls, with property listeners for live updates. `MediaService` communicates with each player's published scripting interface on a background queue. `FileShelfService` stores file references and manages native file picking, drop providers, and AirDrop. `KeepAwakeService` manages public IOKit power assertions and their lifetimes. `OverlayController` owns display geometry, mouse and drag routing, and public Carbon hotkeys. `HaloDesign` defines shared spacing, colors, accessible motion, and control styles. `HaloView` and `UtilityViews` draw the notch and activity controls; `SettingsView` provides native configuration. Additional activities can be added as independent services and views in later releases.
+`AppModel` owns persisted preferences and activity state. `PowerService` uses IOKit notifications. `SystemVolumeService` uses Core Audio output-device volume and mute controls, with property listeners for live updates. `MediaService` communicates with each player's published scripting interface on a background queue. `FileShelfService` stores file references and manages native file picking, drop providers, and AirDrop. `KeepAwakeService` manages public IOKit power assertions and their lifetimes. `OverlayController` owns display geometry, mouse and drag routing, and public Carbon hotkeys. `HaloDesign` defines shared spacing, colors, accessible motion, and control styles. `HaloBackground` combines a masked native backdrop material with a soft gradient and an opaque accessibility fallback. `HaloView` and `UtilityViews` draw the notch and activity controls; `SettingsView` provides native configuration. Additional activities can be added as independent services and views in later releases.

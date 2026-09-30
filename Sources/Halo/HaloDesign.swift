@@ -22,8 +22,8 @@ enum HaloLayout {
 enum HaloPalette {
     static let surface = Color(red: 0.012, green: 0.012, blue: 0.014)
     static let card = Color.white.opacity(0.065)
-    static let secondary = Color.white.opacity(0.64)
-    static let tertiary = Color.white.opacity(0.43)
+    static let secondary = Color.white.opacity(0.74)
+    static let tertiary = Color.white.opacity(0.54)
     static let accent = Color(red: 0.57, green: 0.76, blue: 1)
     static let green = Color(red: 0.48, green: 0.87, blue: 0.62)
     static let orange = Color(red: 1, green: 0.72, blue: 0.40)

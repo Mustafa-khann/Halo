@@ -51,7 +51,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
                 List(SettingsPage.allCases, selection: $page) { item in
                     Label(item.title, systemImage: item.symbol).font(.system(size: 13)).padding(.vertical, 4).tag(item)
                 }.listStyle(.sidebar)
-                HStack { Text(model.preferences.shortcut.glyphs).font(.system(size: 10, design: .monospaced)); Spacer(); Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.2.0") }
+                HStack { Text(model.preferences.shortcut.glyphs).font(.system(size: 10, design: .monospaced)); Spacer(); Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.2.1") }
                     .font(.system(size: 10)).foregroundStyle(.tertiary).padding(19)
             }.navigationSplitViewColumnWidth(min: 185, ideal: 195, max: 210)
         } detail: {
@@ -197,7 +197,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
                 Image(nsImage: NSImage(named: NSImage.applicationIconName) ?? NSImage()).resizable().frame(width: 112, height: 112).padding(.top, 24)
                 Text("Halo").font(.system(size: 32, weight: .medium))
                 Text("A little more Mac.").font(.system(size: 15)).foregroundStyle(.secondary)
-                Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.2.0")").font(.system(size: 11)).foregroundStyle(.tertiary)
+                Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.2.1")").font(.system(size: 11)).foregroundStyle(.tertiary)
                 Divider().padding(.vertical, 12)
                 VStack(alignment: .leading, spacing: 16) {
                     aboutRow("hand.raised", "Your Mac, your choice.", "Music access is optional. Halo never records your keystrokes or sends usage analytics.")
@@ -242,7 +242,11 @@ struct HaloAppearancePreview: View {
                 }
             }.padding(.horizontal, expanded ? 18 : 0)
                 .frame(width: expanded ? 276 : 150, height: expanded ? 126 : 26, alignment: .top)
-                .foregroundStyle(.white).background(HaloPalette.surface)
+                .foregroundStyle(.white)
+                .background {
+                    if expanded { HaloBackground(notchHeight: 22, showsMaterial: false) }
+                    else { HaloPalette.surface }
+                }
                 .clipShape(HaloShape(topRadius: expanded ? 10 : 4, bottomRadius: expanded ? 22 : 9))
                 .shadow(color: .black.opacity(expanded ? 0.18 : 0), radius: 12, y: 5)
             Text("Hover to preview").font(.system(size: 10)).foregroundStyle(.tertiary).frame(maxHeight: .infinity, alignment: .bottom).padding(.bottom, 8)

@@ -47,11 +47,17 @@ struct HaloShape: Shape {
                 }
             }
             .frame(width: model.currentWidth, height: model.currentHeight, alignment: .top)
-            .background(HaloPalette.surface)
+            .background {
+                if model.expanded {
+                    HaloBackground(notchHeight: model.geometry.notchHeight)
+                } else {
+                    HaloPalette.surface
+                }
+            }
             .clipShape(HaloShape(topRadius: model.expanded ? HaloLayout.topRadius : 5, bottomRadius: model.expanded ? HaloLayout.bottomRadius : 12))
             .overlay {
                 if model.expanded {
-                    HaloShape(topRadius: HaloLayout.topRadius, bottomRadius: HaloLayout.bottomRadius).strokeBorderFallback(Color.white.opacity(contrast == .increased ? 0.4 : 0.09))
+                    HaloShape(topRadius: HaloLayout.topRadius, bottomRadius: HaloLayout.bottomRadius).strokeBorderFallback(Color.white.opacity(contrast == .increased ? 0.4 : 0.14))
                 }
                 if model.preferences.filesEnabled && model.fileShelf.draggingOver {
                     HaloShape(topRadius: HaloLayout.topRadius, bottomRadius: HaloLayout.bottomRadius).stroke(HaloPalette.accent, lineWidth: 2)

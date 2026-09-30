@@ -128,8 +128,8 @@ final class HaloPanel: NSPanel {
     private func position() {
         guard let screen = NSScreen.screens.first(where: { $0.safeAreaInsets.top > 0 }) ?? NSScreen.main ?? NSScreen.screens.first else { return }
         model.geometry = .read(screen)
-        let width = max(model.geometry.expandedWidth(preference: model.preferences.expandedWidth), model.geometry.notchWidth + 96) + 48
-        let height = model.geometry.notchHeight + 300
+        let width = max(model.geometry.expandedWidth(preference: model.preferences.expandedWidth), model.geometry.notchWidth + 96) + HaloLayout.panelInset
+        let height = model.geometry.notchHeight + HaloLayout.expandedBodyHeight + HaloLayout.panelInset
         let top = screen.frame.maxY - (model.geometry.hasNotch ? 0 : 6)
         let frame = NSRect(x: model.geometry.centerX - width / 2, y: top - height, width: width, height: height)
         if panel == nil {
@@ -161,9 +161,9 @@ final class HaloPanel: NSPanel {
         guard model.overlayEnabled else { return false }
         let rect = haloRect
         guard rect.contains(point) else { return false }
-        let inset: CGFloat = model.expanded ? 12 : 5
+        let inset: CGFloat = model.expanded ? HaloLayout.topRadius : 5
         if point.y < rect.maxY - inset && (point.x < rect.minX + inset || point.x > rect.maxX - inset) { return false }
-        let radius: CGFloat = model.expanded ? 28 : 12
+        let radius: CGFloat = model.expanded ? HaloLayout.bottomRadius : 12
         if point.y < rect.minY + radius {
             let left = CGPoint(x: rect.minX + inset + radius, y: rect.minY + radius)
             let right = CGPoint(x: rect.maxX - inset - radius, y: rect.minY + radius)

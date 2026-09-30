@@ -44,20 +44,20 @@ enum SettingsPage: String, CaseIterable, Identifiable {
                     Image(nsImage: NSImage(named: NSImage.applicationIconName) ?? NSImage()).resizable().frame(width: 40, height: 40)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Halo").font(.system(size: 17, weight: .semibold))
-                        Text("A little more Mac.").font(.system(size: 10)).foregroundStyle(.secondary)
+                        Text("A little more Mac.").font(.system(size: 11)).foregroundStyle(.secondary).lineLimit(1).fixedSize()
                     }
                     Spacer()
                 }.padding(.horizontal, 17).padding(.top, 24).padding(.bottom, 22)
                 List(SettingsPage.allCases, selection: $page) { item in
-                    Label(item.title, systemImage: item.symbol).font(.system(size: 12)).padding(.vertical, 3).tag(item)
+                    Label(item.title, systemImage: item.symbol).font(.system(size: 13)).padding(.vertical, 4).tag(item)
                 }.listStyle(.sidebar)
-                HStack { Text(model.preferences.shortcut.glyphs).font(.system(size: 10, design: .monospaced)); Spacer(); Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.1.0") }
+                HStack { Text(model.preferences.shortcut.glyphs).font(.system(size: 10, design: .monospaced)); Spacer(); Text(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.2.0") }
                     .font(.system(size: 10)).foregroundStyle(.tertiary).padding(19)
             }.navigationSplitViewColumnWidth(min: 185, ideal: 195, max: 210)
         } detail: {
             VStack(alignment: .leading, spacing: 0) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text((page ?? .general).title).font(.system(size: 27, weight: .medium))
+                    Text((page ?? .general).title).font(.system(size: 26, weight: .semibold))
                     Text((page ?? .general).subtitle).font(.system(size: 12)).foregroundStyle(.secondary)
                 }.padding(.horizontal, 28).padding(.top, 26).padding(.bottom, 18)
                 switch page ?? .general {
@@ -197,7 +197,7 @@ enum SettingsPage: String, CaseIterable, Identifiable {
                 Image(nsImage: NSImage(named: NSImage.applicationIconName) ?? NSImage()).resizable().frame(width: 112, height: 112).padding(.top, 24)
                 Text("Halo").font(.system(size: 32, weight: .medium))
                 Text("A little more Mac.").font(.system(size: 15)).foregroundStyle(.secondary)
-                Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.0")").font(.system(size: 11)).foregroundStyle(.tertiary)
+                Text("Version \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.2.0")").font(.system(size: 11)).foregroundStyle(.tertiary)
                 Divider().padding(.vertical, 12)
                 VStack(alignment: .leading, spacing: 16) {
                     aboutRow("hand.raised", "Your Mac, your choice.", "Music access is optional. Halo never records your keystrokes or sends usage analytics.")
@@ -223,19 +223,36 @@ struct HaloAppearancePreview: View {
     @ViewState private var expanded = false
     var body: some View {
         ZStack(alignment: .top) {
-            LinearGradient(colors: [Color(nsColor: .controlBackgroundColor), Color.accentColor.opacity(0.09)], startPoint: .topLeading, endPoint: .bottomTrailing)
-            Color.primary.opacity(0.04).frame(height: 24)
-            VStack(spacing: 11) {
+            LinearGradient(colors: [Color(nsColor: .controlBackgroundColor), Color.accentColor.opacity(0.06)], startPoint: .topLeading, endPoint: .bottomTrailing)
+            Color.primary.opacity(0.04).frame(height: 22)
+            VStack(spacing: 9) {
                 Color.clear.frame(height: 22)
                 if expanded {
-                    Image(systemName: "sparkles").font(.system(size: 20, weight: .light))
-                    Text("Right here, when you need it.").font(.system(size: 11, weight: .medium))
+                    HStack(spacing: 3) {
+                        ForEach(["square.grid.2x2", "music.note", "timer", "tray", "cup.and.saucer", "battery.100percent"], id: \.self) { symbol in
+                            Image(systemName: symbol).font(.system(size: 9, weight: .medium))
+                                .frame(maxWidth: .infinity).frame(height: 23)
+                                .background(.white.opacity(symbol == "square.grid.2x2" ? 0.13 : 0), in: RoundedRectangle(cornerRadius: 7))
+                        }
+                    }.foregroundStyle(.white.opacity(0.7)).padding(3).background(.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 10))
+                    HStack(spacing: 7) {
+                        previewCard("timer", title: "Focus", value: "25 min", tint: HaloPalette.orange)
+                        previewCard("tray", title: "File shelf", value: "Drop files", tint: HaloPalette.accent)
+                    }
                 }
-            }.frame(width: expanded ? 270 : 150, height: expanded ? 124 : 27, alignment: .top)
-                .foregroundStyle(.white).background(.black).clipShape(HaloShape(topRadius: expanded ? 10 : 4, bottomRadius: expanded ? 20 : 9))
-                .shadow(color: .black.opacity(expanded ? 0.15 : 0), radius: 12, y: 5)
-            Text("Hover to preview").font(.system(size: 10)).foregroundStyle(.tertiary).frame(maxHeight: .infinity, alignment: .bottom).padding(.bottom, 9)
+            }.padding(.horizontal, expanded ? 18 : 0)
+                .frame(width: expanded ? 276 : 150, height: expanded ? 126 : 26, alignment: .top)
+                .foregroundStyle(.white).background(HaloPalette.surface)
+                .clipShape(HaloShape(topRadius: expanded ? 10 : 4, bottomRadius: expanded ? 22 : 9))
+                .shadow(color: .black.opacity(expanded ? 0.18 : 0), radius: 12, y: 5)
+            Text("Hover to preview").font(.system(size: 10)).foregroundStyle(.tertiary).frame(maxHeight: .infinity, alignment: .bottom).padding(.bottom, 8)
         }.onHover { expanded = $0 }.animation(reduceMotion ? .easeOut(duration: 0.08) : .spring(response: 0.36, dampingFraction: 0.86), value: expanded)
             .clipShape(RoundedRectangle(cornerRadius: 10))
+    }
+    private func previewCard(_ symbol: String, title: String, value: String, tint: Color) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Label(title, systemImage: symbol).font(.system(size: 8)).foregroundStyle(tint)
+            Text(value).font(.system(size: 15, weight: .medium, design: .rounded))
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(9).haloCard(radius: 11)
     }
 }

@@ -81,7 +81,7 @@ import UserNotifications
         if expanded { return geometry.expandedWidth(preference: preferences.expandedWidth) }
         return geometry.notchWidth + (compactActivity ? 96 : (geometry.hasNotch ? 6 : 0))
     }
-    var currentHeight: CGFloat { expanded ? geometry.notchHeight + 250 : geometry.notchHeight + (geometry.hasNotch ? 2 : 0) }
+    var currentHeight: CGFloat { expanded ? geometry.notchHeight + HaloLayout.expandedBodyHeight : geometry.notchHeight + (geometry.hasNotch ? 2 : 0) }
     var reduceMotion: Bool { preferences.respectReduceMotion && NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }
 
     func open(pin: Bool = false, tab: HaloTab? = nil) {

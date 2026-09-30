@@ -58,7 +58,7 @@ for size in [16, 32, 128, 256, 512] {
 }
 let background = render(width: 1200, height: 800, scale: 2) { rect in
     NSGradient(colors: [NSColor(calibratedRed: 0.975, green: 0.98, blue: 0.99, alpha: 1), NSColor(calibratedRed: 0.90, green: 0.925, blue: 0.955, alpha: 1)])!.draw(in: rect, angle: -65)
-    centered("Halo", y: 318, font: .systemFont(ofSize: 34, weight: .medium), color: NSColor(calibratedWhite: 0.15, alpha: 1), width: 600)
+    centered("Halo", y: 318, font: .systemFont(ofSize: 34, weight: .semibold), color: NSColor(calibratedWhite: 0.15, alpha: 1), width: 600)
     centered("A little more Mac.", y: 292, font: .systemFont(ofSize: 13), color: .secondaryLabelColor, width: 600)
     let arrow = NSBezierPath()
     arrow.move(to: NSPoint(x: 272, y: 199)); arrow.line(to: NSPoint(x: 328, y: 199))
@@ -66,7 +66,7 @@ let background = render(width: 1200, height: 800, scale: 2) { rect in
     arrow.lineWidth = 3; arrow.lineCapStyle = .round; arrow.lineJoinStyle = .round
     NSColor(calibratedWhite: 0.55, alpha: 1).setStroke(); arrow.stroke()
     centered("Drag Halo to Applications.", y: 48, font: .systemFont(ofSize: 13), color: NSColor(calibratedWhite: 0.38, alpha: 1), width: 600)
-    centered("Music. Battery. A moment to focus.", y: 24, font: .systemFont(ofSize: 10), color: NSColor(calibratedWhite: 0.55, alpha: 1), width: 600)
+    centered("Music. Files. Focus.", y: 24, font: .systemFont(ofSize: 10), color: NSColor(calibratedWhite: 0.55, alpha: 1), width: 600)
 }
 try write(background, to: resources.appendingPathComponent("InstallerBackground.png"))
 print("Created Halo icon and installer artwork.")
